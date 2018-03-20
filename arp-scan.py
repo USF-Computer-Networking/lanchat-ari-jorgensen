@@ -1,65 +1,50 @@
+
+import socket
+import subprocess
 import sys
-import signal
-from scapy.all import *
-import netaddr
 
- 
-def signal_handler(signal, frame):
-	print('\n=================')
-	print('Execution aborted')
-	print('=================')
-	os.system("kill -9 " + str(os.getpid()))
-	sys.exit(1)
 
-def signal_exit(signal, frame):
-	sys.exit(1)
+class Device:
+    def __init__(self, name, ipaddr, mac, interface):
+        self.name = name
+        self.ipaddr = ipaddr
+        self.mac = mac
+        self.interface = interface
 
-def usage():
-	if len(sys.argv) < 3:
-		print "\nUsage:"
-		print "\tpython arp-scan.py -l <IPs>"
-		print "\t<ips> is a single ip, range , or list of IPs (separated by \",\")\n"
-		sys.exit(1)
- 
-def decode_netmask (network):
-	for ip in netaddr.IPNetwork(network):
-		scan_devices(str(ip))
+    def __repr__(self):
+        return "Device({},{},{},{})".format(self.name, self.ipaddr, self.mac, self.interface)
 
-def decode_file (filename):
-	ipsfile = open (filename,"r")
-	for line in ipsfile:
-		scan_devices(line)
+    def __str__(self):
+        return self.ipaddr
 
-def decode_enumeration (iplist):
-	for line in iplist:
-		scan_devices(line)
 
-def scan_devices(ip):
-	ans,unans=srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=ip,hwdst="ff:ff:ff:ff:ff:ff"), timeout=2, verbose=0)
-	for pair in ans:
-		print "%-20s%s" %(pair[1].psrc, pair[1].hwsrc)
+    def __str__(self):
+        return "Device name: {}\nIP address: {}\nMAC address: {}\nInterface: {}\n".format(self.name, self.ipaddr, self.mac, self.interface)
 
-def check_root():
-    if not os.geteuid() == 0:
-        print "Run as root."
-        exit(1)
 
-if __name__ == "__main__":
-	signal.signal(signal.SIGINT, signal_handler)
-	usage()
-	check_root()
-	parameters ={sys.argv[1]:sys.argv[2]}
-	print "\n[*] Scanning for active IPs"
-	if "/" in parameters["-l"]:
-		print "[*] Scanning subnet %s" %(parameters["-l"])
-		print "\n%-20s%s" %("IP", "MAC")
-		decode_netmask(parameters["-l"])
-	elif "," in parameters["-l"]:
-		print "[*] Scanning list of IPs %s" %(parameters["-l"])
-		print "\n%-20s%s" %("IP", "MAC")
-		decode_enumeration(parameters["-l"])
-	else:
-		print "[*] Scanning Single IP %s" %(parameters["-l"])
-		print "\n%-20s%s" %("IP", "MAC")
-		scan_devices(parameters["-l"])
-	print ""
+def create_dev(d):
+    attr = d.split(' ')
+    return Device(attr[0], attr[1][1:-1], attr[3], attr[5])
+
+def scan():
+    cmd = ['arp', '-a']
+    result = subprocess.check_output(cmd)
+    devs = result.split('\n')
+    devs.pop()
+    devices = []
+    for d in devs:
+        devices.append(create_dev(d))
+    
+    for d in devices:
+        print(d)
+
+def main():
+    
+    print("Starting scan...\n")
+
+
+    scan()
+    
+
+if __name__ == '__main__':
+    main()
